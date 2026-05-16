@@ -1,0 +1,12 @@
+{
+  "skills": [
+    {
+      "id": "lua_module_ir",
+      "file": "lua_module_ir.md",
+      "summary": "How to send and learn IR signals from Lua.",
+      "cap_groups": [
+        "cap_lua"
+      ]
+    }
+  ]
+}

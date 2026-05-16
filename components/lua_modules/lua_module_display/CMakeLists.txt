@@ -1,0 +1,13 @@
+idf_component_register(
+    SRCS
+        "src/display_hal.c"
+        "src/lua_module_display.c"
+    INCLUDE_DIRS
+        "include"
+    REQUIRES
+        cap_lua
+        display_arbiter
+        esp_lcd
+        esp_painter
+        libpng
+)

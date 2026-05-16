@@ -1,0 +1,9 @@
+## IDF Component Manager Manifest File
+dependencies:
+  espressif/libpng: "^1.6.55"
+
+  esp_painter:
+    path: ../../common/esp_painter
+
+  display_arbiter:
+    path: ../../common/display_arbiter

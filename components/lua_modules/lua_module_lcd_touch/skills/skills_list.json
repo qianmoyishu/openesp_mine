@@ -1,0 +1,12 @@
+{
+  "skills": [
+    {
+      "id": "lua_module_lcd_touch",
+      "file": "lua_module_lcd_touch.md",
+      "summary": "How to sync, read, and poll LCD touch state from Lua.",
+      "cap_groups": [
+        "cap_lua"
+      ]
+    }
+  ]
+}

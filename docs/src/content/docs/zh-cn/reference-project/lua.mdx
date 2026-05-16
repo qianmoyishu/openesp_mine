@@ -1,0 +1,19 @@
+---
+title: Lua 脚本
+description: cap_lua 管理的 Lua 脚本根目录、工具暴露与运行机制。
+---
+
+import { LinkCard } from '@astrojs/starlight/components';
+
+`cap_lua` 管理一个**受管 Lua 根目录**（demo：`/fatfs/scripts/`），向大语言模型暴露列举、编写、同步/异步执行脚本的工具。所有脚本路径均经 `cap_lua` 校验，只有根目录内的 `.lua` 文件可被执行。
+
+脚本在设备上运行时能调用哪些原生能力（GPIO、延时、向 Event Router 发布事件等），由应用注册的 `lua_module_*` 模块决定。`claw_event_router` 的 `run_script` 动作也可直接触发 Lua 脚本，无需大语言模型参与。
+
+`edge_agent` 自带了多个示例脚本（位于 `application/edge_agent/main/lua_scripts/`）：
+- `advance_camera_preview.lua`：展示 `camera` + `display` + `board_manager` + `delay` 的联合用法。
+- `advance_clock_dial_demo.lua` / `advance_flappybird.lua`：展示显示渲染与脚本交互能力的综合示例。
+- `advance_audio_fft.lua`：展示音频采集与频谱分析。
+- `advance_lcd_touch_paint.lua`：展示触摸屏绘图能力。
+
+<LinkCard href="@lang/reference-cap/cap-lua" title="cap_lua" description="工具列表、异步执行与自动化 run_script" />
+<LinkCard href="@lang/reference-cap/lua-modules" title="Lua 扩展模块" description="lua_module_* 的注册机制与脚本内可用的原生能力" />

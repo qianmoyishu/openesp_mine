@@ -1,0 +1,12 @@
+{
+  "skills": [
+    {
+      "id": "lua_module_uart",
+      "file": "lua_module_uart.md",
+      "summary": "How to open a UART port and read/write bytes or text lines from Lua using polling.",
+      "cap_groups": [
+        "cap_lua"
+      ]
+    }
+  ]
+}

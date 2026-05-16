@@ -1,0 +1,12 @@
+{
+  "skills": [
+    {
+      "id": "lua_module_delay",
+      "file": "lua_module_delay.md",
+      "summary": "How to call delay.delay_ms(ms) from Lua after loading the delay module.",
+      "cap_groups": [
+        "cap_lua"
+      ]
+    }
+  ]
+}

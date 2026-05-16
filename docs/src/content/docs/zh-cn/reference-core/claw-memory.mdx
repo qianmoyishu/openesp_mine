@@ -1,0 +1,63 @@
+---
+title: Memory Manager
+description: 会话历史与长期记忆文件的读写，以及与 claw_core 的对接方式。
+---
+
+import LinkToSource from '@/components/LinkToSource.astro';
+import { LinkCard, Aside, FileTree } from '@astrojs/starlight/components';
+
+头文件：<LinkToSource relativePath="components/claw_modules/claw_memory/include/claw_memory.h" />
+
+## 初始化配置
+
+`claw_memory_config_t` 的常见字段：
+
+| 字段 | 说明 | `edge_agent` 默认值 |
+|------|------|------|
+| `session_root_dir` | 会话历史文件的根目录 | `/fatfs/sessions` |
+| `memory_root_dir` | 长期记忆目录路径（`claw_memory` 在此目录下管理 `MEMORY.md` 及结构化记忆文件） | `/fatfs/memory` |
+| `max_session_messages` | 单个 session 保留的最大消息条数 | `20` |
+| `max_message_chars` | 单条消息的最大字符数 | `1024` |
+| `enable_async_extract_stage_note` | 是否启用结构化记忆异步抽取阶段说明 | 完整模式下为 `true` |
+
+`max_session_messages` 与 `max_message_chars` 共同控制历史文件的体量，防止在 Flash 上日志式膨胀，同时避免拼入过长的历史而消耗过多 token。
+
+## 与 claw_core 的对接
+
+`claw_memory` 通过多个 Context Providers 与 Callback 接入 `claw_core`。
+
+**Context Providers**（在 `claw_core_init` 后依次注册）：
+
+- `claw_memory_profile_provider`：注入可编辑的人设与用户画像文件（`user.md` / `soul.md` / `identity.md`）。
+- `claw_memory_long_term_provider`（完整模式）：仅注入长期记忆「摘要标签目录」，不直接注入完整记忆正文。
+- `claw_memory_long_term_lightweight_provider`（轻量模式）：直接注入 `MEMORY.md` 文本。
+- `claw_memory_session_history_provider`：每次请求前将当前 session 的近期轮次注入上下文。
+
+**写回 Callback**：
+
+- `claw_memory_append_session_turn_callback`：作为 `claw_core_config_t.append_session_turn` 传入，Agent 完成一轮推理后自动将本轮 user/assistant 文本追加写回对应 session 文件。
+- 完整模式还会启用 `on_request_start` 与 `collect_stage_note`，用于结构化记忆自动抽取流程。
+
+## 长期记忆文件布局
+
+`edge_agent` 会通过 `claw_memory_init` 在 `/fatfs/memory/` 目录下创建记忆功能所需的文件：
+
+<FileTree>
+- fatfs/
+  - memory/
+    - memory_records.jsonl 结构化记忆记录
+    - memory_index.json 摘要标签与关键词索引
+    - memory_digest.log 记忆操作摘要日志
+    - MEMORY.md 供人类阅读的记忆视图（只读）
+    - user.md 用户画像
+    - soul.md 人设
+    - identity.md 身份
+</FileTree>
+
+<Aside type="caution" title="关于 MEMORY.md 的定位">
+  在完整结构化模式中，`MEMORY.md` 主要是便于人工查看的同步产物，不作为记忆检索来源。
+
+  检索与召回以 `memory_records.jsonl` + `memory_index.json` 为准。
+</Aside>
+
+<LinkCard title="Memory" href="@lang/reference-project/memory" description="两种时间尺度的记忆设计：会话历史与长期记忆的设计理念与使用建议" />

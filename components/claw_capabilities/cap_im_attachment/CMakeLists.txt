@@ -1,0 +1,10 @@
+idf_component_register(
+    SRCS
+        "src/cap_im_attachment.c"
+    INCLUDE_DIRS
+        "include"
+    REQUIRES
+        esp_http_client
+        mbedtls
+        json
+)

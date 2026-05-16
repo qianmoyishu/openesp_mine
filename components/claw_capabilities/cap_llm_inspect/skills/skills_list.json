@@ -1,0 +1,12 @@
+{
+  "skills": [
+    {
+      "id": "cap_llm_inspect_image",
+      "file": "cap_llm_inspect.md",
+      "summary": "How to inspect a local image with inspect_image.",
+      "cap_groups": [
+        "cap_llm_inspect"
+      ]
+    }
+  ]
+}

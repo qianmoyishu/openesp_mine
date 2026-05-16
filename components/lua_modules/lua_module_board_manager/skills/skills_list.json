@@ -1,0 +1,12 @@
+{
+  "skills": [
+    {
+      "id": "lua_module_board_manager",
+      "file": "lua_module_board_manager.md",
+      "summary": "How to query board information and resolve device handles and parameters from Lua.",
+      "cap_groups": [
+        "cap_lua"
+      ]
+    }
+  ]
+}

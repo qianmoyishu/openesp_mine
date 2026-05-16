@@ -1,0 +1,11 @@
+idf_component_register(
+    SRCS
+        "src/cap_at_mqtt.c"
+    INCLUDE_DIRS
+        "include"
+    REQUIRES
+        claw_cap
+        driver
+        freertos
+        json
+)

@@ -1,0 +1,13 @@
+{
+  "skills": [
+    {
+      "id": "weather_search",
+      "file": "weather.md",
+      "summary": "How to answer current weather, temperature, and forecast queries through direct web search capabilities.",
+      "cap_groups": [
+        "cap_time",
+        "cap_web_search"
+      ]
+    }
+  ]
+}

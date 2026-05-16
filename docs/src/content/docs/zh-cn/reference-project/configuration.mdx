@@ -1,0 +1,106 @@
+---
+title: 配置说明
+description: 编译期默认值、NVS 持久化与 Web 修改的优先级与生效方式。
+---
+
+import { Aside } from '@astrojs/starlight/components';
+import LinkToSource from '@/components/LinkToSource.astro';
+
+ESP-Claw `edge_agent` 使用 menuconfig (sdkconfig) 保存初始化默认配置，使用 NVS 持久化运行时修改的配置。
+
+`edge_agent` 会将配置储存在 NVS 命名空间 `app` 里。
+上电后，程序会读取 menuconfig 中的默认配置，再使用 NVS 中储存的键（如有）覆盖。
+字段列表与读写逻辑位于 <LinkToSource relativePath="application/edge_agent/components/app_config/app_config.c" />。
+
+<Aside title="优先级如何理解">
+  **当前运行使用的值 = NVS 里有的用 NVS，没有的用编译默认值。**
+
+  因此：第一次在 Web 或串口工具里保存过后，就会以 NVS 为准；想「恢复出厂默认」需要清除对应 NVS 键。
+</Aside>
+
+## edge_agent 配置字段
+
+除标注为「可选」的选项外，其他选项均为必填。
+
+### 基础配置
+
+- **`wifi_ssid` / `wifi_password`：Wi-Fi SSID 与密码**
+  - 除 ESP32-C5 外，其他芯片仅支持 2.4 GHz 频段的 Wi-Fi。
+  - 密码留空表示当前 Wi-Fi 无密码。
+- **`time_timezone`：时区**
+  - 需为 POSIX TZ string 格式，推荐从[此表格](https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv)中查阅。
+  - 例如：北京/香港/新加坡等地的时区为 `CST-8`。
+
+### LLM 相关配置
+
+固件侧 LLM 运行时（`claw_core` 中 `claw_llm_runtime.c`）按 **profile（预设）+ backend（协议实现）** 构建请求：
+- **profile** 决定默认网关根地址、API 路径、`max_tokens` 等字段名等元数据；
+- **backend** 决定 HTTP 请求/响应是否按 OpenAI Chat Completions 兼容格式 还是 Anthropic Messages API 请求与解析。
+
+以下为具体配置项：
+- **`llm_profile`：供应商/场景预设**
+  - 空字符串会回退到 `claw_llm_profile_default()` 指定的默认 profile（当前为 `openai`）。
+  - 当前版本预设取值与实际配置对应关系参阅
+    <LinkToSource relativePath="application/edge_agent/components/app_config/app_config.c" />。
+- **`llm_backend_type`：后端类型**[可选]
+  - 需与真实接口协议一致或留空：例如调用官方 Anthropic 或兼容其 Messages 格式的网关时，应使用 `anthropic`；调用 OpenAI 或各类「OpenAI 兼容」网关时，应使用 `openai_compatible`。
+  - 若填写非空，则覆盖当前 profile 的默认后端类型；若留空则使用 profile 自带默认值。
+  - 可选值：`openai_compatible`、`anthropic`、`custom`[^custombackend]。
+- **`llm_base_url`：API Base URL**[可选]
+  - 自定义网关根地址；留空时使用当前 profile 的默认 `base_url`。
+  - 运行时请求的 Endpoint URL 为 `base_url` + `api_path`。
+- **`llm_model`：模型名**
+  - 须与所选供应商的模型名一致。
+- **`llm_api_key`：大模型 API Key**
+- **`llm_auth_type`：鉴权头类别**[可选]
+  - 补充字段，例如 `bearer`、`api-key`、`none` 等。
+  - 使用 `openai_compatible` backend 时，`llm_auth_type` 留空表示使用 `bearer` 作为鉴权头类别，并使用 `Authorization: Bearer <API Key>` 请求头传递。
+  - 使用 `anthropic` backend 时，`llm_auth_type` 选项会被忽略。API Key 会通过 `x-api-key: <API Key>` 请求头传递。
+- **`llm_timeout_ms`：请求超时**
+  - 请求超时时间（毫秒，字符串形式存储）。
+
+### IM 与开放平台
+
+ESP-Claw 支持接入 QQ、飞书、Telegram 与微信 ClawBot，并预留了可扩展接口。如不填写对应的凭据，对应的 IM 将无法正常使用。
+
+- **`qq_app_id` / `qq_app_secret`：QQ 开放平台机器人凭证**
+- **`feishu_app_id` / `feishu_app_secret`：飞书应用凭证**
+- **`tg_bot_token`：Telegram Bot Token**
+- **`wechat_token` / `wechat_base_url` / `wechat_cdn_base_url` / `wechat_account_id`：微信 ClawBot 相关参数**，推荐由扫码登录流程写入。
+
+<Aside type="note" title="Capability 与 IM 配置参数的关系">
+  接入 IM 能力需要启用对应的 Capability，并配置对应的凭据。\
+  若只启用 Capability 而不配置凭据，则该 Capability 仍会启用，但无法收发消息。
+</Aside>
+
+### 网络搜索
+
+网络搜索 API Key 均为可选。两者均留空时，ESP-Claw 将无法通过网络搜索获取在线信息。
+
+- `search_brave_key`：Brave Search API Key，详见 [Brave API 文档](https://api-dashboard.search.brave.com/documentation/guides/authentication)。
+- `search_tavily_key`：Tavily API Key，详见 [Tavily API 文档](https://docs.tavily.com/documentation/quickstart)。
+
+## 编译期 Kconfig 选项
+
+除上述运行时可改的 NVS 配置外，部分行为由编译期 **Kconfig**（`menuconfig`）控制，未提供运行时修改方法，修改后需重新编译固件：
+
+- **`APP_CLAW_MEMORY_MODE`**：选择长期记忆工作模式。
+  - **Structured（完整结构化记忆，默认）**：启用结构化记忆抽取流程；LLM 可见组额外包含 `claw_memory`；注入摘要标签目录而非完整 `MEMORY.md`。
+  - **Lightweight（轻量）**：跳过结构化抽取，直接将 `MEMORY.md` 文本注入上下文；适合内存或上下文窗口受限场景。
+- **`APP_CLAW_ENABLE_EMOTE`**：是否在启动时启用 LCD 表情/状态显示组件。仅在板型带 LCD 时有意义，不开启可节省少量堆内存。
+
+可通过 `idf.py menuconfig` → `(Top)` → `App Claw Config` 查看和修改上述选项。
+
+## 修改入口
+
+- **Web**：详见 [Web 配置](@lang/tutorial/web-config)。
+- **menuconfig**：适合产线烧录前写入默认 Wi‑Fi、默认 Key；仍会被 NVS 覆盖。
+- **在线烧录工具**：在烧录向导里写入的值会保存到 NVS，效果等价于 Web 保存。
+
+修改配置后，推荐重启设备以使配置生效。
+
+<Aside type="caution" title="安全提醒">
+  配置页与 NVS 中存有机密令牌，请勿把导出的配置或整机 NVS 转储随意公开。
+</Aside>
+
+[^custombackend]: 自定义后端实现，仅用于进阶用途，查看源代码以获取更多信息。

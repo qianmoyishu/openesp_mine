@@ -1,0 +1,13 @@
+{
+  "skills": [
+    {
+      "id": "lua_module_mcpwm",
+      "file": "lua_module_mcpwm.md",
+      "title": "lua_module_mcpwm",
+      "summary": "How to create and control generic PWM output from Lua with MCPWM.",
+      "cap_groups": [
+        "cap_lua"
+      ]
+    }
+  ]
+}

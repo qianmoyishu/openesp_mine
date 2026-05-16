@@ -1,0 +1,12 @@
+{
+  "skills": [
+    {
+      "id": "lua_module_system",
+      "file": "lua_module_system.md",
+      "summary": "How to access time, uptime, memory, and Wi-Fi info from Lua through the system module.",
+      "cap_groups": [
+        "cap_lua"
+      ]
+    }
+  ]
+}

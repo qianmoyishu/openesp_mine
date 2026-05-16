@@ -1,0 +1,12 @@
+{
+  "skills": [
+    {
+      "id": "cap_scheduler",
+      "file": "cap_scheduler.md",
+      "summary": "Manage scheduler rules: list/get/add/update/remove/enable/disable/pause/resume/trigger/reload.",
+      "cap_groups": [
+        "cap_scheduler"
+      ]
+    }
+  ]
+}

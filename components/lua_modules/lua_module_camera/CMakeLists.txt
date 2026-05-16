@@ -1,0 +1,12 @@
+idf_component_register(
+    SRCS
+        "src/lua_module_camera.c"
+        "src/lua_module_camera_service.c"
+    INCLUDE_DIRS
+        "include"
+    REQUIRES
+        cap_lua
+        esp_new_jpeg
+        esp_timer
+        freertos
+)

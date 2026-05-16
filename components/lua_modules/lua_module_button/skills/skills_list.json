@@ -1,0 +1,12 @@
+{
+  "skills": [
+    {
+      "id": "lua_module_button",
+      "file": "lua_module_button.md",
+      "summary": "How to create button handles, subscribe to events, and dispatch button state from Lua.",
+      "cap_groups": [
+        "cap_lua"
+      ]
+    }
+  ]
+}

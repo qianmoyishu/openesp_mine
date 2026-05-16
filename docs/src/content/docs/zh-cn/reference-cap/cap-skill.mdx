@@ -1,0 +1,133 @@
+---
+title: cap_skill — Skill 管理工具
+description: core 功能暴露代表：将 claw_skill 运行时功能封装为 LLM 可调用的工具集。
+---
+
+import LinkToSource from '@/components/LinkToSource.astro';
+import { Aside } from '@astrojs/starlight/components';
+
+源码：<LinkToSource relativePath="components/claw_capabilities/cap_skill_mgr/src/cap_skill_mgr.c" /> · 头文件：<LinkToSource relativePath="components/claw_capabilities/cap_skill_mgr/include/cap_skill_mgr.h" />
+
+## 定位
+
+`cap_skill` 是**将 core 运行时功能暴露为工具**的代表实现。它不实现任何自己独立的业务逻辑，而是将 `claw_skill` 模块（见 [claw_skill](@lang/reference-core/claw-skill)）的能力——注册/注销 Skill、激活/停用 Skill——封装成 LLM 可调用的工具，同时向 Console 暴露为 `cap call` 命令。
+
+这种「薄包装（thin wrapper）」模式在 ESP-Claw 中很常见：底层功能由 `claw_*` 模块实现，`cap_*` 组件负责将其转化为工具接口和调用路由。
+
+## 暴露的工具
+
+`cap_skill` 注册了五个 Callable：
+
+| 工具 ID | 描述 |
+|---------|------|
+| `list_skill` | 列出 `skills_list.json` 中所有已注册的 Skill |
+| `register_skill` | 向目录注册一个新 Skill（需提供 `.md` 文件已存在） |
+| `unregister_skill` | 从目录中移除一个 Skill |
+| `activate_skill` | 为当前 session 激活 Skill，同步开放对应 cap_groups |
+| `deactivate_skill` | 停用 Skill（或用 `"all"` 清除所有激活状态） |
+
+除 `list_skill` 外，其余工具均标记为 `CLAW_CAP_FLAG_CALLABLE_BY_LLM`，即 LLM 可直接调用。
+
+<Aside type="note">
+  正常情况下，所有 Skills 的 ID 和摘要都已暴露给 LLM，因此没有必要再向 LLM 暴露 `list_skill` 工具。
+
+  `list_skill` 主要保留给人类使用者，例如通过 Console 等方式手动列出 Skills。
+</Aside>
+
+## 核心实现分析
+
+### `activate_skill`：从工具调用到状态同步
+
+`activate_skill` 是最核心的工具，它的执行链路展示了 Capability 如何操作 core 运行时状态：
+
+```d2
+direction: down
+
+llm: "LLM\nactivate_skill({skill_id})"
+activate_fn: "claw_skill_activate_for_session()"
+fatfs: "FATFS\nactive_skills.json"
+sync_fn: "cap_skill_sync_session_visible_groups()"
+load_fn: "claw_skill_load_active_cap_groups()"
+set_fn: "claw_cap_set_session_llm_visible_groups()"
+
+llm -> activate_fn
+llm -> sync_fn
+
+activate_fn -> fatfs: "写入激活状态"
+
+sync_fn -> load_fn: "读取已激活 Skill\n的 cap_groups 合并"
+sync_fn -> set_fn: "更新工具可见白名单"
+```
+
+关键在于最后一步 `claw_cap_set_session_llm_visible_groups`：激活 Skill 会**立即**在当前对话 session 中开放对应 Capability Group 的工具，LLM 在下一轮对话中即可看到并调用新工具。
+
+### `register_skill`：文件系统完整性检查
+
+注册一个新 Skill 时，`cap_skill` 执行严格的合法性检查：
+
+```c
+// 1. 路径安全：禁止 "/" 开头、".." 跳目录、反斜杠
+if (!cap_skill_path_is_valid(file_item->valuestring)) { ... }
+
+// 2. 文件必须已存在于受管目录
+// 路径必须在 /fatfs/skills/ 下，且以 .md 结尾
+if (!cap_skill_file_exists(skill_path)) { ... return ESP_ERR_NOT_FOUND; }
+
+// 3. 不允许重复 skill_id
+if (cap_skill_catalog_contains_id(skills, skill_id)) { ... return ESP_ERR_INVALID_ARG; }
+```
+
+修改 `skills_list.json` 后立即调用 `claw_skill_reload_registry()` 使变更生效；若重载失败，自动回滚到修改前的内容，保持目录一致性。
+
+### Session 隔离
+
+`activate_skill` 和 `deactivate_skill` 都从 `ctx->session_id` 获取当前会话 ID，激活状态按 session 独立存储。这意味着：
+
+- Telegram 会话和飞书会话可以激活不同的 Skill 集合
+- 重启后，持久化在文件系统的激活状态会自动恢复
+
+### 输出格式
+
+所有工具返回结构化 JSON，便于 LLM 解析：
+
+```jsonc
+// activate_skill 成功响应
+{
+  "action": "activate_skill",
+  "session_id": "tg::-123456",
+  "skill_id": "cap_lua_run",
+  "ok": true,
+  "active_skill_ids": ["cap_lua_run", "cap_files"]
+}
+```
+
+`deactivate_skill` 在被 guard 拦截时，也会返回结构化 JSON（而非静默失败），例如：
+
+```jsonc
+{
+  "ok": false,
+  "error": "deactivate blocked by skill guard",
+  "skill_id": "all",
+  "blocked_by": "cap_lua_run",
+  "reason": "1 Lua async job(s) still running..."
+}
+```
+
+当仅停用单个 Skill 时，返回中通常包含 `skill_id` 与 `reason`；当使用 `"all"` 时，可能附带 `blocked_by` 指出首个拦截来源。
+
+## Skills 文档位置
+
+`cap_skill` 本身没有对应的 Skills 文档（因为 Skill 管理工具总是对 LLM 可见，不需要通过 Skill 激活）。`cap_skill` Group 通常在应用启动时直接加入 `claw_cap_set_llm_visible_groups` 白名单。
+
+## 与 `claw_skill` 的分工
+
+| 层 | 模块 | 职责 |
+|----|------|------|
+| 框架层 | `claw_skill` | Skills 目录解析、session 激活状态持久化、向 `claw_core` 注入上下文 |
+| 工具层 | `cap_skill` | 将上述功能暴露为 LLM 工具，供 Console / Agent 调用 |
+
+`cap_skill` 是一个纯粹的「适配器」：它不持有任何状态，所有操作都委托给 `claw_skill`，自己只负责参数解析、错误格式化和返回值构造。
+
+<Aside type="note">
+  若想通过 Console 手动激活 Skill，可直接用 `cap call activate_skill {"skill_id":"your_skill"}` 命令，等价于 LLM 调用同名工具。
+</Aside>

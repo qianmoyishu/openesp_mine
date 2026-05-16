@@ -1,0 +1,12 @@
+{
+  "skills": [
+    {
+      "id": "board_hardware_info",
+      "file": "board_hardware_info.md",
+      "summary": "Use this skill before operating hardware or writing Lua and board-specific code that depends on device inventory and occupied GPIOs. **You cannot speculate or fabricate hardware information.**",
+      "cap_groups": [
+        "cap_boards"
+      ]
+    }
+  ]
+}

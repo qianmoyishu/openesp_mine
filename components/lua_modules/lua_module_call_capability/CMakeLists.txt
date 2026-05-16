@@ -1,0 +1,10 @@
+idf_component_register(
+    SRCS
+        "src/lua_module_capability.c"
+    INCLUDE_DIRS
+        "include"
+    REQUIRES
+        cap_lua
+        claw_cap
+        json
+)

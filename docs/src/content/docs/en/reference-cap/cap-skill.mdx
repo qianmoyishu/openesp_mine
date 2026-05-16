@@ -1,0 +1,133 @@
+---
+title: cap_skill — Skill management tools
+description: Core-surface reference capability—`claw_skill` behaviors exposed as LLM-callable tools.
+---
+
+import LinkToSource from '@/components/LinkToSource.astro';
+import { Aside } from '@astrojs/starlight/components';
+
+Source: <LinkToSource relativePath="components/claw_capabilities/cap_skill_mgr/src/cap_skill_mgr.c" /> · header: <LinkToSource relativePath="components/claw_capabilities/cap_skill_mgr/include/cap_skill_mgr.h" />
+
+## Role
+
+`cap_skill` is the **thin wrapper that exposes core runtime features as tools**. It contains no standalone product logic; it forwards `claw_skill` (see [claw_skill](@lang/reference-core/claw-skill))—register/unregister Skills, activate/deactivate them—into LLM-callable tools and Console `cap call` entry points.
+
+This “thin `cap_*` over `claw_*`” pattern is common: frameworks implement behavior, capabilities adapt it to tools and routing.
+
+## Tools exposed
+
+`cap_skill` registers five Callables:
+
+| Tool ID | Description |
+|---------|-------------|
+| `list_skill` | List every Skill declared in `skills_list.json` |
+| `register_skill` | Add a Skill to the catalog (`.md` must already exist on disk) |
+| `unregister_skill` | Remove a Skill from the catalog |
+| `activate_skill` | Activate for the current session and open bound `cap_groups` |
+| `deactivate_skill` | Deactivate a Skill (or `"all"` to clear) |
+
+Except `list_skill`, all are flagged `CLAW_CAP_FLAG_CALLABLE_BY_LLM`.
+
+<Aside type="note">
+  Under normal operation, all Skills‘ IDs and summaries are already exposed to the LLM, so there is no need to expose `list_skill` to the model.
+
+  `list_skill` is mainly kept for human operators, for example listing Skills manually via Console.
+</Aside>
+
+## Implementation notes
+
+### `activate_skill`: tool call → session sync
+
+`activate_skill` is the heart of the flow—how a capability mutates core session state:
+
+```d2
+direction: down
+
+llm: "LLM\nactivate_skill({skill_id})"
+activate_fn: "claw_skill_activate_for_session()"
+fatfs: "FATFS\nactive_skills.json"
+sync_fn: "cap_skill_sync_session_visible_groups()"
+load_fn: "claw_skill_load_active_cap_groups()"
+set_fn: "claw_cap_set_session_llm_visible_groups()"
+
+llm -> activate_fn
+llm -> sync_fn
+
+activate_fn -> fatfs: "persist activation"
+
+sync_fn -> load_fn: "merge cap_groups from active skills"
+sync_fn -> set_fn: "refresh tool allow-list"
+```
+
+The last hop, `claw_cap_set_session_llm_visible_groups`, **immediately** widens the current session’s tool surface so the LLM can call newly opened caps on the next turn.
+
+### `register_skill`: filesystem checks
+
+Registration enforces integrity:
+
+```c
+// 1. Path safety: no leading "/", no "..", no backslashes
+if (!cap_skill_path_is_valid(file_item->valuestring)) { ... }
+
+// 2. File must already exist under the managed skills tree
+// Path must live under /fatfs/skills/ and end with .md
+if (!cap_skill_file_exists(skill_path)) { ... return ESP_ERR_NOT_FOUND; }
+
+// 3. skill_id must be unique
+if (cap_skill_catalog_contains_id(skills, skill_id)) { ... return ESP_ERR_INVALID_ARG; }
+```
+
+After editing `skills_list.json`, `claw_skill_reload_registry()` applies changes; failed reload rolls back to keep the catalog consistent.
+
+### Session isolation
+
+`activate_skill` / `deactivate_skill` read `ctx->session_id`, so activation sets differ per session:
+
+- Telegram vs Feishu sessions can load different Skills
+- After reboot, activation state is restored from FATFS
+
+### Response shape
+
+Tools return structured JSON the LLM can parse:
+
+```jsonc
+// Successful activate_skill
+{
+  "action": "activate_skill",
+  "session_id": "tg::-123456",
+  "skill_id": "cap_lua_run",
+  "ok": true,
+  "active_skill_ids": ["cap_lua_run", "cap_files"]
+}
+```
+
+When `deactivate_skill` is blocked by a guard, it also returns structured JSON (instead of a silent failure), for example:
+
+```jsonc
+{
+  "ok": false,
+  "error": "deactivate blocked by skill guard",
+  "skill_id": "all",
+  "blocked_by": "cap_lua_run",
+  "reason": "1 Lua async job(s) still running..."
+}
+```
+
+When deactivating a single Skill, the response usually includes `skill_id` and `reason`; when using `"all"`, it may additionally include `blocked_by` to indicate the first blocker.
+
+## Skill docs
+
+`cap_skill` itself has no Skill document—these tools are always visible without activation. The `cap_skill` group is usually part of the boot-time `claw_cap_set_llm_visible_groups` allow-list.
+
+## Split with `claw_skill`
+
+| Layer | Module | Responsibility |
+|-------|--------|------------------|
+| Framework | `claw_skill` | Parse the skills tree, persist activation per session, inject docs into `claw_core` |
+| Tooling | `cap_skill` | Expose the above as LLM / Console-callable tools |
+
+`cap_skill` is a pure adapter: no private state; everything delegates to `claw_skill` while handling JSON IO and error strings.
+
+<Aside type="note">
+  To activate manually from the Console, run `cap call activate_skill {"skill_id":"your_skill"}`—equivalent to the LLM tool of the same name.
+</Aside>

@@ -1,0 +1,12 @@
+{
+  "skills": [
+    {
+      "id": "lua_module_audio",
+      "file": "lua_module_audio.md",
+      "summary": "How to create audio input/output handles and play, record, or inspect audio from Lua.",
+      "cap_groups": [
+        "cap_lua"
+      ]
+    }
+  ]
+}

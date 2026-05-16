@@ -1,0 +1,12 @@
+{
+  "skills": [
+    {
+      "id": "lua_module_storage",
+      "file": "lua_module_storage.md",
+      "summary": "How to create directories and read or write files from Lua.",
+      "cap_groups": [
+        "cap_lua"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "skills": [
+    {
+      "id": "lua_module_i2c",
+      "file": "lua_module_i2c.md",
+      "summary": "How to create an I2C bus, scan it, and read/write I2C devices from Lua.",
+      "cap_groups": [
+        "cap_lua"
+      ]
+    }
+  ]
+}

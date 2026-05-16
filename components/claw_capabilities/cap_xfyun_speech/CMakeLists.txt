@@ -1,0 +1,13 @@
+idf_component_register(
+    SRCS
+        "src/cap_xfyun_speech.c"
+    INCLUDE_DIRS
+        "include"
+    REQUIRES
+        claw_cap
+        esp-tls
+        esp_websocket_client
+        freertos
+        json
+        mbedtls
+)

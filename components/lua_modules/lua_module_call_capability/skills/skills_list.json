@@ -1,0 +1,12 @@
+{
+  "skills": [
+    {
+      "id": "lua_module_capability",
+      "file": "lua_module_capability.md",
+      "summary": "How to call registered capabilities from Lua through capability.call(name, payload[, opts]).",
+      "cap_groups": [
+        "cap_lua"
+      ]
+    }
+  ]
+}

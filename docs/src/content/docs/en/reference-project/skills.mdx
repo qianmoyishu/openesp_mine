@@ -1,0 +1,216 @@
+---
+title: Skills
+description: Tips for using Skills
+---
+
+import { Aside, FileTree } from '@astrojs/starlight/components';
+import { Code } from 'starlight-theme-nova/components'
+import exampleSkill from '@/assets/example-skill.md?raw';
+
+Skills give the LLM modular “skills”—tool usage, workflows, best practices, guardrails, and more.
+Compared to stuffing everything in the prompt, Skills distill durable know-how and load on demand instead of every turn.
+
+ESP-Claw uses Skills to manage context dynamically and extend the Agent—including driving hardware through documented tool flows.
+
+## Manually add, remove, or edit Skills
+
+Skills live on disk under `/fatfs/skills` by default. Use the Web config file manager to add or remove them.
+
+<FileTree>
+- fatfs
+  - skills
+    - **skills_list.json** stores the Skills list and metadata
+    - cap_im_qq.md Skill for QQ IM usage
+    - cap_lua_run.md Skill for running Lua scripts
+    - cap_scheduler.md Skill for the scheduler usage
+    - cap_router_mgr.md Skill for the Event Router rule management
+    - lua_module_gpio.md Skill for the Lua GPIO module
+    - ...
+</FileTree>
+
+<Aside type="tip">
+  The Skill files included with `cap_*` and `lua_module_*` components are located in the `skills/` directory of the component's source code and are bundled into the FATFS image during build.
+</Aside>
+
+### List and metadata
+
+Unlike Claude Agent Skills, ESP-Claw does **not** read Skill metadata from Markdown YAML front matter. All metadata belongs in `skills_list.json`.
+
+<details>
+<summary>`skills_list.json` format</summary>
+```jsonc
+{
+  "skills": <{"id": "string", "file": "string", "summary": "string", "cap_groups"?: "string[]"}[]>
+}
+```
+</details>
+
+```jsonc
+{
+  "skills": [
+    {
+      "id": "cap_lua_run",          // <- unique Skill id
+      "file": "cap_lua_run.md",     // <- Skill file name
+      "summary": "Describes how to correctly use Lua scripts.", // <- Skill summary
+      "cap_groups": ["cap_lua"]     // <- optional: capability groups opened when this Skill activates
+    },
+    ...
+  ]
+}
+```
+
+`id` and `summary` map to the Skill ID and summary shown to the model in the Skills catalog.
+
+`cap_groups` is optional: a list of capability group ids. When the Skill activates, those groups become visible to the LLM (tools exposed); when the Skill deactivates, they leave that Skill’s visibility set. This binds “how to use tools” with “having the tools” for the same lifecycle so the model cannot call tools without the guide.
+
+<Aside type="tip">
+  Values in `cap_groups` are `claw_cap_group_info_t.id` strings—the ids used when each capability group registers (e.g. `cap_lua`, `cap_im_qq`).
+</Aside>
+
+### Skill files
+
+Skill files are Markdown. Spell out the skill—usage, workflow, best practices, rules—clearly. Example:
+
+<Code lang="md" title="weather.md" code={exampleSkill} />
+
+### Writing effective Skill documentation
+
+After activation, the Skill `.md` is injected into the chat, so write for the **LLM**, not for human developers skimming a repo.
+
+**Strong Skill docs include:**
+
+| Element | Purpose |
+|---------|---------|
+| Scenario framing | States *when* to activate so the model can self-select |
+| Invocation rules | Parameter constraints, ordering, rate limits |
+| JSON examples | Copy-ready tool payloads—not prose paraphrases |
+| Error playbook | Frequent errors and how to recover |
+| Cross-tool notes | e.g. “Call X first to discover paths, then call this tool” |
+
+Here is a full template for a capability-backed Skill:
+
+``````markdown
+# My Feature
+
+One sentence describing when this Skill should activate.
+
+## Usage rules
+
+- When calling `my_action`, `param` must be non-empty
+- On failure, validate `param`, then retry once
+- Never issue more than three calls in a row; wait ≥ 500 ms between attempts
+
+## Example calls
+
+Basic invocation:
+```json
+{"param": "hello"}
+```
+
+With optional fields:
+```json
+{"param": "hello", "mode": "fast"}
+```
+
+## Error handling
+
+- `Error: param is required` — add `param`, then retry
+- `Error: invalid state` — device not ready; tell the user to try later
+``````
+
+#### Lua module Skills
+
+`lua_module_*` Skills target **LLM-authored Lua**, not JSON tool calls like `cap_*` docs. Provide precise API references instead of generic prose.
+
+**Lua module Skill docs should cover:**
+
+| Element | Purpose |
+|---------|---------|
+| Hardware summary | What it drives, which pins or buses |
+| Init story | Whether `require` has side effects, extra setup steps |
+| Full API table | Parameters, returns, short Lua snippets per function |
+| Usage rules | Rate limits, dependencies (“initialize `board_manager` first”) |
+| Failure modes | Cases that raise Lua errors |
+
+``````markdown
+# myled
+
+Controls a single LED connected to GPIO 2.
+
+## Setup
+
+No explicit init required. The module configures GPIO 2 on first `require`.
+
+## API
+
+### `myled.set(on)`
+
+Turns the LED on or off.
+
+- `on`: boolean
+
+```lua
+local myled = require("myled")
+myled.set(true)   -- on
+myled.set(false)  -- off
+```
+
+### `myled.get()` → boolean
+
+Returns the current LED state.
+
+## Rules
+
+- The module only controls GPIO 2; there is no parameter to change the pin.
+- Do not call `myled.set` more than once per 50 ms.
+``````
+
+The `lua_module_display` Skill is a good model: it spells out each drawing helper, optional table fields, return values, and constraints such as “text is ASCII-only”—all mandatory context for code-generating models.
+
+### One Skill or many?
+
+Split complex capabilities into multiple Skills that still bind the same `cap_groups` when scenarios differ:
+
+```jsonc
+{
+  "skills": [
+    {
+      "id": "my_feature_basic",
+      "file": "my_feature_basic.md",
+      "summary": "Basic flows: simple actions",
+      "cap_groups": ["cap_my_feature"]
+    },
+    {
+      "id": "my_feature_advanced",
+      "file": "my_feature_advanced.md",
+      "summary": "Advanced flows: batching and recovery",
+      "cap_groups": ["cap_my_feature"]
+    }
+  ]
+}
+```
+
+Simple jobs activate only the Basic Skill to keep context lean; harder jobs pull in Advanced guidance on demand.
+
+## Let the Agent add, remove, or edit Skills
+
+Skills usually capture repeatable work or guidance, so after a task you can ask the Agent to summarize and evolve them.
+
+```sh
+ask "search today's weather in Tokyo for me"
+ask "turn the earlier city-weather lookup into a reusable skill"
+```
+
+## How Skills work
+
+Context can carry tools, requirements, and extra rules.
+But repeating every tool’s full manual every turn bloats context, hurts quality, and burns tokens.
+
+Skills progressively disclose capabilities. Initially the model only sees the catalog entries with summaries.
+When a Skill is needed, the model activates it and receives the full document.
+
+If `cap_groups` is set, activation also opens the matching capability groups so the LLM can call tools immediately—no separate manual enable. After the task, `deactivate_skill` drops the Skill and its tool visibility to keep context lean.
+
+<Aside type="tip">
+  See Claude’s docs for more background: [How skills work](https://platform.claude.com/docs@lang/agents-and-tools/agent-skills/overview#how-skills-work).
+</Aside>

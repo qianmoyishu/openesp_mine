@@ -1,0 +1,12 @@
+{
+  "skills": [
+    {
+      "id": "cap_web_search",
+      "file": "cap_web_search.md",
+      "summary": "Search the public web for current information through the configured Tavily or Brave provider.",
+      "cap_groups": [
+        "cap_web_search"
+      ]
+    }
+  ]
+}

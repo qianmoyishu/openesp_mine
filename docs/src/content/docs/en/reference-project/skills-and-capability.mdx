@@ -1,0 +1,58 @@
+---
+title: Skills and Capability
+description: How Skill injection, capability tools, and collaboration work.
+---
+
+import { LinkCard, Aside } from '@astrojs/starlight/components';
+
+## Capability: tool layer
+
+A **Capability** is a **tool bundle** the LLM can call. Each `cap_*` module implements a feature (Lua, IM, files, …) and registers a **Capability Group** with `claw_cap`.
+
+On every LLM request, `claw_cap_tools_provider` injects only tools from groups that are **visible** for the session—hidden groups do not exist in context. That avoids dumping unrelated tools.
+
+## Skills: knowledge layer
+
+A **Skill** is a **Markdown file** describing how to use a feature, workflows, or behavioral contracts. `claw_skill` injects via two context providers:
+
+| Provider | Injected content | Always on |
+|----------|------------------|:---------:|
+| `claw_skill_skills_list_provider` | All Skill ids, summaries | yes |
+| `claw_skill_active_skill_docs_provider` | Full `.md` for activated Skills | only when active |
+
+Before activation the LLM only sees summaries; activation loads the full doc. Activation is per session and persisted on disk across reboots.
+
+## Relationship and differences
+
+Capabilities expose tool signatures without prose guides; Skills carry guides without executable tools—they complement each other:
+
+| | Capability | Skill |
+|---|---|---|
+| **Nature** | Tools (functions) | Knowledge (context) |
+| **Carrier** | C code (`cap_*`) | Markdown files |
+| **Role** | Lets the LLM **do** | Teaches the LLM **how** |
+| **Lifecycle** | Registered at boot; visibility per group | Activate/deactivate on demand; persisted |
+
+They link through `cap_groups` in `skills_list.json`:
+
+```jsonc
+{
+  "id": "cap_lua_run",
+  "cap_groups": ["cap_lua"]   // opening this Skill also opens the cap_lua tool group
+}
+```
+
+**Activating a Skill does two things**:
+
+1. Injects the `.md` into the next request (knowledge).
+2. Makes the listed capability groups visible for the session (tools).
+
+Deactivating removes both to keep context tight.
+
+<Aside type="tip">
+  A capability group without complex usage can skip a Skill and be added to `claw_cap_set_llm_visible_groups` for always-on exposure.
+</Aside>
+
+<LinkCard href="@lang/reference-core/claw-skill" title="claw_skill" description="Skills layout, skills_list.json, and activation plumbing" />
+<LinkCard href="@lang/reference-cap/cap-skill" title="cap_skill" description="Console skill commands and activate_skill / deactivate_skill tools" />
+<LinkCard href="@lang/reference-project/skills" title="Skills guide" description="Manual and Agent workflows plus file format examples" />

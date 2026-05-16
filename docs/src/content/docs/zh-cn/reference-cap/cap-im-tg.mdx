@@ -1,0 +1,176 @@
+---
+title: cap_im_tg — Telegram IM 接入
+description: IM 接入代表：长轮询事件源与可调用工具的双重角色分析。
+---
+
+import LinkToSource from '@/components/LinkToSource.astro';
+import { Aside } from '@astrojs/starlight/components';
+
+源码：<LinkToSource relativePath="components/claw_capabilities/cap_im_tg/src/cap_im_tg.c" /> · 头文件：<LinkToSource relativePath="components/claw_capabilities/cap_im_tg/include/cap_im_tg.h" />
+
+## 定位
+
+`cap_im_tg` 是 **IM 类 Capability 的代表实现**，展示了一个组件如何同时承担两种角色：
+
+1. **事件源（Event Source）**：在后台持续轮询 Telegram Bot API，将用户发来的消息转化为 `claw_event_router` 事件
+2. **可调用工具（Callable）**：向 LLM 暴露发送消息/图片/文件的工具，让 Agent 能主动向用户回复
+
+这种「双向」模式是所有 IM 类 Capability（飞书、QQ、微信）的通用架构。
+
+## 架构概览
+
+```d2
+tg_api: "Telegram Bot API"
+poll_task: "tg_poll_task\n(FreeRTOS)"
+router: "claw_event_router"
+core: "claw_core\n(Agent)"
+attach_queue: "attachment_queue"
+attach_task: "tg_attachment_task\n(FreeRTOS)"
+fatfs: "FATFS"
+
+tg_api -> poll_task: "getUpdates\n(长轮询, 20 s)"
+poll_task -> router: "文本消息\npublish_message()"
+router -> core: "Event Router 规则"
+poll_task -> attach_queue: "附件（图片/文件）"
+attach_queue -> attach_task
+attach_task -> tg_api: "getFile → 下载 URL"
+attach_task -> fatfs: "流式写入"
+attach_task -> router: "attachment_saved 事件"
+
+llm_call: "LLM 工具调用\ntg_send_message\ntg_send_image / tg_send_file"
+llm_call -> tg_api: "sendMessage\nsendPhoto / sendDocument"
+```
+
+## 事件源：长轮询机制
+
+`cap_im_tg` 在 `start` 钩子中启动两个 FreeRTOS 任务：
+
+### `tg_poll_task`
+
+持续调用 `getUpdates`（带 20 秒 long-poll 超时），将收到的每条消息解析后发布事件：
+
+```c
+// 文本消息 → 标准 message 事件
+claw_event_router_publish_message(
+    "tg_gateway",   // source_cap（事件来源标识）
+    "telegram",     // source_channel（渠道）
+    chat_id,        // 会话 ID
+    text,           // 消息正文
+    sender_id,      // 发送者 ID
+    message_id      // 消息 ID
+);
+```
+
+`claw_event_router` 收到此事件后，根据规则决定是交给 `claw_core` 运行 Agent，还是触发自动化动作。
+
+### 去重缓存
+
+由于网络抖动可能导致同一更新被重复下发，`cap_im_tg` 维护了一个循环 FNV-1a 哈希缓存（64 个槽），避免同一消息被处理两次：
+
+```c
+#define CAP_IM_TG_DEDUP_CACHE_SIZE 64
+
+static bool cap_im_tg_dedup_check_and_record(const char *update_key)
+{
+    uint64_t key = cap_im_tg_fnv1a64(update_key);
+    for (size_t i = 0; i < CAP_IM_TG_DEDUP_CACHE_SIZE; i++) {
+        if (s_tg.seen_update_keys[i] == key) return true; // 已见过
+    }
+    s_tg.seen_update_keys[s_tg.seen_update_idx] = key;
+    s_tg.seen_update_idx = (s_tg.seen_update_idx + 1) % CAP_IM_TG_DEDUP_CACHE_SIZE;
+    return false;
+}
+```
+
+### 附件处理（`tg_attachment_task`）
+
+附件（图片/文档）的下载是耗时操作，`cap_im_tg` 将其异步化：
+
+1. `tg_poll_task` 解析出附件信息，构造 `cap_im_tg_attachment_job_t` 投入队列（深度 8）
+2. `tg_attachment_task` 消费队列，调用 `getFile` 获取下载 URL，流式写入 FATFS
+3. 下载完成后发布 `attachment_saved` 类型事件，`payload_json` 包含本地路径、MIME 类型、尺寸等信息
+
+```c
+// attachment_saved 事件的 payload_json 示例
+{
+  "platform": "telegram",
+  "attachment_kind": "photo",
+  "saved_path": "/fatfs/inbox/telegram/-123456/789/photo.jpg",
+  "saved_dir": "/fatfs/inbox/telegram/-123456/789",
+  "saved_name": "photo.jpg",
+  "mime": "image/jpeg",
+  "caption": "看看这个",
+  "platform_file_id": "AgACAgIAAxkBAAI...",
+  "size_bytes": 45231,
+  "saved_at_ms": 1714000000000
+}
+```
+
+下游规则可以监听 `attachment_saved` 事件，触发 `cap_llm_inspect` 分析图片等动作。
+
+## 可调用工具
+
+`cap_im_tg` 注册了四个 Capability 描述符：
+
+| 工具 ID | 描述 | kind |
+|---------|------|------|
+| `tg_gateway` | 轮询网关（事件源） | `EVENT_SOURCE` |
+| `tg_send_message` | 发送文本消息到指定 chat_id | `CALLABLE` |
+| `tg_send_image` | 发送本地图片文件到 Telegram | `CALLABLE` |
+| `tg_send_file` | 发送本地任意文件到 Telegram | `CALLABLE` |
+
+### `tg_send_message` 实现要点
+
+- 若 `input_json` 中未提供 `chat_id`，自动从 `ctx->chat_id` 取值（即将消息回复给当前对话发起者）
+- 超长文本自动分片（每片最多 4096 字节），逐片调用 `sendMessage`
+
+```c
+// chat_id 优先级：JSON 参数 > 调用上下文
+if (cJSON_IsString(chat_id_json) && chat_id_json->valuestring[0]) {
+    chat_id = chat_id_json->valuestring;
+} else if (ctx && ctx->chat_id && ctx->chat_id[0]) {
+    chat_id = ctx->chat_id;  // 从会话上下文自动继承
+}
+```
+
+### 图片/文件发送：multipart 流式上传
+
+`tg_send_image` 和 `tg_send_file` 通过 multipart/form-data 向 Telegram API 上传文件：
+
+- 使用 `stat()` 预先获取文件大小，计算精确的 `Content-Length`
+- 使用 `esp_http_client_open` + 手动写入各 part，避免将整个文件载入内存
+- 支持 MIME 类型自动推断（`.jpg`、`.png`、`.pdf`、`.txt`、`.json`）
+
+## 配置 API
+
+应用层通过以下函数配置 `cap_im_tg`：
+
+```c
+// 设置 Bot Token（必须在 start 前调用）
+cap_im_tg_set_token("YOUR_BOT_TOKEN");
+
+// 配置附件接收（可选）
+cap_im_tg_set_attachment_config(&(cap_im_tg_attachment_config_t){
+    .storage_root_dir         = "/fatfs/inbox",
+    .max_inbound_file_bytes   = 2 * 1024 * 1024,  // 最大 2 MB
+    .enable_inbound_attachments = true,
+});
+
+// 手动启动（通常由 claw_cap_start_group 调用）
+cap_im_tg_start();
+```
+
+<Aside type="tip">
+  **内存优化：** 轮询任务和附件任务在支持 SPIRAM 的板型上会优先分配到外部 RAM（`MALLOC_CAP_SPIRAM`），节省片内 SRAM 给实时任务。
+</Aside>
+
+## 与其他 IM 组件的对比
+
+`cap_im_feishu`、`cap_im_qq`、`cap_im_wechat` 遵循相同架构，差异仅在 API 协议和认证方式：
+
+| 组件 | 协议 | 特点 |
+|------|------|------|
+| `cap_im_tg` | Bot API + long poll | 最简单，无需服务器 |
+| `cap_im_feishu` | Webhook / Event API | 需要公网可达 |
+| `cap_im_qq` | QQ Bot API | 需要腾讯审批 |
+| `cap_im_wechat` | 企业微信 API | 企业场景 |

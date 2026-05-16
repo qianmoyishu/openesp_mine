@@ -1,0 +1,128 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-bg-base: #0a0b0e;
+  --color-bg-surface: #111318;
+  --color-bg-card: #161920;
+  --color-bg-card-hover: #1c2028;
+  --color-bg-input: #0e1015;
+
+  --color-border-subtle: rgba(255, 255, 255, 0.1);
+  --color-border-strong: rgba(255, 255, 255, 0.2);
+  --color-border-accent: rgba(232, 54, 45, 0.15);
+
+  --color-text-primary: #e8eaf0;
+  --color-text-secondary: #9aa0b0;
+  --color-text-muted: #565b6b;
+  --color-text-on-accent: #ffffff;
+
+  --color-accent: #e8362d;
+  --color-accent-soft: #d32f2f;
+  --color-accent-dim: rgba(232, 54, 45, 0.08);
+
+  --color-green: #68d391;
+  --color-green-dim: rgba(104, 211, 145, 0.15);
+  --color-orange: #f6ad55;
+  --color-danger: #f87171;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", "SFMono-Regular", Consolas, monospace;
+}
+
+@layer base {
+  html {
+    background: var(--color-bg-base);
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.6;
+  }
+
+  body {
+    min-height: 100vh;
+    background: #07080a;
+    overflow-x: hidden;
+  }
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+  }
+
+  input,
+  select,
+  textarea {
+    background: var(--color-bg-input);
+    border: 1px solid var(--color-border-subtle);
+    color: var(--color-text-primary);
+    border-radius: var(--radius-sm);
+    padding: 0.55rem 0.85rem;
+    font-size: 0.875rem;
+    font-family: inherit;
+    transition: border-color 0.15s;
+    width: 100%;
+  }
+
+  input:focus,
+  select:focus,
+  textarea:focus {
+    outline: none;
+    border-color: rgba(232, 54, 45, 0.4);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--color-text-muted);
+  }
+
+  select option {
+    background: #1c2028;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 9px;
+  }
+}
+
+@layer utilities {
+  .bg-panel {
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-lg);
+  }
+
+  .pulse-dot {
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%,
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.5;
+      transform: scale(0.8);
+    }
+  }
+}

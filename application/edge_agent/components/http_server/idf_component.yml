@@ -1,0 +1,3 @@
+dependencies:
+  cap_im_local:
+    path: ../../../../components/claw_capabilities/cap_im_local

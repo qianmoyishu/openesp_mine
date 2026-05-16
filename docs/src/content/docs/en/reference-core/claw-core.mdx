@@ -1,0 +1,127 @@
+---
+title: Agent Core
+description: Agent tasks, context providers, and boundaries with the LLM / tools.
+---
+
+import LinkToSource from '@/components/LinkToSource.astro';
+import { LinkCard, Aside } from '@astrojs/starlight/components';
+
+Header: <LinkToSource relativePath="components/claw_modules/claw_core/include/claw_core.h" />
+
+## Responsibilities
+
+`claw_core` implements the on-device Agent core: given a message with “what the user said, which session and channel it came from”, it runs in a dedicated task to assemble context, call the LLM, parse tool calls, execute capabilities through a single entry point, and iterate per configuration until the model returns final text or errors.
+
+## Request shape
+
+`claw_core_request_t` carries metadata for one interaction, for example:
+
+- `session_id`: session identifier (the Console `session` command switches the active session; IM routing also derives ids per policy).
+- `user_text`: user message body.
+- `source_*` / `target_*`: source channel, chat id, message id, source cap, etc. These are passed through to `claw_cap_call_from_core` so capabilities can reply or correlate context.
+
+Applications submit with `claw_core_submit` and read `claw_core_response_t` via `claw_core_receive` / `claw_core_receive_for`.
+`claw_core_response_t` includes assistant text (`text`) and `error_message`.
+
+### Request flags
+
+`claw_core_request_t.flags` supports combinations of the following flags:
+
+| Flag | Description |
+|------|-------------|
+| `CLAW_CORE_REQUEST_FLAG_PUBLISH_OUT_MESSAGE` | After inference, publish the response as an `out_message` event to the Event Router |
+| `CLAW_CORE_REQUEST_FLAG_SKIP_RESPONSE_QUEUE` | Skip the response queue; don't return results via `claw_core_receive` |
+
+The Event Router's `run_agent` action sets both flags to enable an asynchronous submit + event-published response path.
+
+When assembling the **current-turn user prompt** sent to the LLM, `claw_core` also appends **Behavior Notes**: since the framework usually auto-delivers the final assistant result to users, you generally do not need to proactively call each IM `cap_im_*` send API to return the same text (to avoid duplicate replies).
+
+<Aside type="tip" title="Output detailed Agent tool-call progress">
+    `claw_core` supports detailed Agent tool-call progress output.
+    To enable it, see [Dataflow and automation](@lang/reference-project/dataflow-and-automation#agent_stage-event-and-execution-progress-notifications).
+</Aside>
+
+## Context assembly
+
+`claw_core` can attach multiple **context providers** (`claw_core_context_provider_t`). Each contributes a slice to `claw_core_context_t`, distinguished by `claw_core_context_kind_t`:
+
+- `CLAW_CORE_CONTEXT_KIND_SYSTEM_PROMPT`
+- `CLAW_CORE_CONTEXT_KIND_MESSAGES`
+- `CLAW_CORE_CONTEXT_KIND_TOOLS`
+
+`edge_agent` registers multiple providers in fixed order inside `app_claw_start`:
+
+1. Editable profile/persona: `claw_memory_profile_provider`
+2. Long-term memory: `claw_memory_long_term_provider` (full mode) or `claw_memory_long_term_lightweight_provider` (lightweight mode)
+3. Session history: `claw_memory_session_history_provider`
+4. Skills catalog: `claw_skill_skills_list_provider`
+5. Activated Skill docs: `claw_skill_active_skill_docs_provider`
+6. Current visible tools: `claw_cap_tools_provider`
+7. Lua async job status: `cap_lua_async_jobs_provider`
+8. Current device time context: `cap_time_context_provider`
+
+So the final tool list depends both on registered capabilities and on `claw_cap_set_llm_visible_groups`.
+
+<Aside type="tip">
+    `edge_agent` exposes `cap_files`, `cap_skill`, `cap_system`, and `cap_lua` to the LLM by default (full structured-memory mode also includes `claw_memory`). Other capabilities typically require activating the corresponding Skill first, so the model gets both "tool visibility + usage guidance" together. See [claw_cap](./claw-cap) and [cap_skill](@lang/reference-cap/cap-skill)
+</Aside>
+
+## Tool calls
+
+`claw_core` handles LLM tool calls through callbacks.
+
+In `edge_agent`, the `call_cap` callback targets `claw_cap_call_from_core` from `claw_cap`.
+`claw_core` only accepts “cap name + JSON args + current request context”; it does not resolve or execute the underlying capability implementation.
+Resolution and execution live in `claw_cap`.
+
+Per-turn tool rounds are capped by `max_tool_iterations`.
+
+## Session history writes
+
+`claw_core` supports multiple ways to append session history via callbacks.
+
+In `edge_agent`, `append_session_turn` is `claw_memory_append_session_turn_callback` from `claw_memory`.
+`claw_core` invokes it at the right times so turns are persisted through `claw_memory`.
+
+## Request cancellation
+
+`claw_core_cancel_request(request_id)` cancels the currently executing request:
+
+- `request_id == 0`: cancel any current in-flight request.
+- `request_id != 0`: only cancel if the current in-flight request ID matches.
+- If no cancellable request exists, returns `ESP_ERR_NOT_FOUND`.
+
+This is cooperative cancellation, mainly used to interrupt an in-progress LLM HTTP request; after completion, the error is normalized as `request cancelled` for easier upper-layer handling.
+
+## Completion observer
+
+`claw_core_add_completion_observer` lets you register a completion observer that receives `claw_core_completion_summary_t` after each request:
+
+- `request_id` / `session_id`: request and session identifiers.
+- `final_text`: final assistant text for this turn (may be empty).
+- `context_providers_csv`: CSV list of providers that injected non-empty context.
+- `tool_calls_csv`: CSV list of tool calls triggered in this turn.
+
+This is useful for audit, metrics, or result-consistency checks (for example, verifying whether specific claims were accompanied by the corresponding tool calls).
+
+`edge_agent` registers `cap_lua_honesty_observe_completion` as a completion observer to detect when the model’s reply claims Lua work ran without a matching tool call, and logs when that happens.
+
+## Init error handling
+
+`app_claw_start` skips `claw_core_init` / `claw_core_start` when API key, profile, or model is missing, and logs.
+
+Core-dependent features (`ask`, default routing to the Agent, image inspect, …) stay unavailable until the LLM is fully configured and the device reboots.
+Event routing, automation, local capabilities, and the Console REPL still work.
+
+<LinkCard title="Boot and runtime wiring" href="@lang/reference-project/boot-and-runtime" description="Full core init flow and conditional logic" />
+
+## Configuration
+
+Common fields in `claw_core_config_t`:
+
+- `profile` / `provider` / `backend_type` / `model` / `base_url` / `auth_type` / `timeout_ms`: routing and auth for different LLM vendors (backends live under `claw_core_llm` and `llm/backends`). `profile` and `provider` are mutually exclusive.
+- `system_prompt`: system prompt, required (`claw_core_init` validates this is non-empty).
+- `image_max_bytes`: maximum size of images/media passed to the LLM layer.
+- `task_stack_size`, `task_priority`, `task_core`: FreeRTOS resources for the background Agent task.
+- `request_queue_len`, `response_queue_len`: queue depths.
+- `max_context_providers`: maximum number of registered providers.

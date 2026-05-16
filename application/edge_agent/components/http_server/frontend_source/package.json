@@ -1,0 +1,32 @@
+{
+  "name": "esp-claw-frontend",
+  "version": "0.1.0",
+  "description": "SolidJS-based web UI for ESP-Claw device settings",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "vite",
+    "dev": "vite",
+    "build": "vite build",
+    "serve": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@kobalte/core": "^0.13.11",
+    "@solid-primitives/i18n": "^2.2.1",
+    "@solid-primitives/keyed": "^1.5.3",
+    "lean-qr": "^2.7.1",
+    "lucide-solid": "^1.11.0",
+    "solid-js": "^1.9.9"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.13",
+    "tailwindcss": "^4.1.13",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.4",
+    "vite-plugin-compression2": "^2.5.3",
+    "vite-plugin-singlefile": "^2.3.3",
+    "vite-plugin-solid": "^2.11.8"
+  }
+}

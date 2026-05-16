@@ -1,0 +1,12 @@
+{
+  "skills": [
+    {
+      "id": "lua_module_event_publisher",
+      "file": "lua_module_event_publisher.md",
+      "summary": "Describe how to publish events to event_router to trigger other actions, such as sending messages or call other capabilities.",
+      "cap_groups": [
+        "cap_lua"
+      ]
+    }
+  ]
+}

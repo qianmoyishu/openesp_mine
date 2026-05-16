@@ -1,0 +1,16 @@
+idf_component_register(
+    SRCS
+        "src/cap_im_wechat.c"
+        "src/cmd_cap_im_wechat.c"
+    INCLUDE_DIRS
+        "include"
+    REQUIRES
+        cap_im_attachment
+        claw_cap
+        claw_event_router
+        esp_http_client
+        esp_timer
+        json
+        mbedtls
+        console
+)

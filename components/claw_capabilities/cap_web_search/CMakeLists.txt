@@ -1,0 +1,12 @@
+idf_component_register(
+    SRCS
+        "src/cap_web_search.c"
+        "src/cmd_cap_web_search.c"
+    INCLUDE_DIRS
+        "include"
+    REQUIRES
+        claw_cap
+        esp_http_client
+        json
+        console
+)

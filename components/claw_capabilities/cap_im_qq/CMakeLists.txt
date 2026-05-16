@@ -1,0 +1,18 @@
+idf_component_register(
+    SRCS
+        "src/cap_im_qq.c"
+        "src/cmd_cap_im_qq.c"
+    INCLUDE_DIRS
+        "include"
+    REQUIRES
+        cap_im_attachment
+        claw_cap
+        claw_event_router
+        esp_http_client
+        esp_event
+        esp_timer
+        esp_websocket_client
+        freertos
+        json
+        console
+)

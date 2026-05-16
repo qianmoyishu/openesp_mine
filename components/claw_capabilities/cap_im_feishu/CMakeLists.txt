@@ -1,0 +1,17 @@
+idf_component_register(
+    SRCS
+        "src/cap_im_feishu.c"
+        "src/cmd_cap_im_feishu.c"
+    INCLUDE_DIRS
+        "include"
+    REQUIRES
+        claw_cap
+        claw_event_router
+        esp_event
+        esp_http_client
+        esp_timer
+        esp_websocket_client
+        freertos
+        json
+        console
+)

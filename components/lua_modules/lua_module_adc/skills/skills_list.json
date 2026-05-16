@@ -1,0 +1,12 @@
+{
+  "skills": [
+    {
+      "id": "lua_module_adc",
+      "file": "lua_module_adc.md",
+      "summary": "How to read analog values (raw or millivolts) from an ADC-capable GPIO in Lua.",
+      "cap_groups": [
+        "cap_lua"
+      ]
+    }
+  ]
+}

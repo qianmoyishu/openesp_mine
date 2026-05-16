@@ -1,0 +1,12 @@
+{
+  "skills": [
+    {
+      "id": "cap_at_mqtt",
+      "file": "cap_at_mqtt.md",
+      "summary": "Use UART1 AT commands for ESP-AT Wi-Fi provisioning and Huawei IoTDA MQTT setup/publish flows.",
+      "cap_groups": [
+        "cap_at_mqtt"
+      ]
+    }
+  ]
+}

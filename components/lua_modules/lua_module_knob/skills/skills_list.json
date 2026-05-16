@@ -1,0 +1,12 @@
+{
+  "skills": [
+    {
+      "id": "lua_module_knob",
+      "file": "lua_module_knob.md",
+      "summary": "How to create rotary encoder (knob) handles, subscribe to rotation events, and read count values from Lua.",
+      "cap_groups": [
+        "cap_lua"
+      ]
+    }
+  ]
+}

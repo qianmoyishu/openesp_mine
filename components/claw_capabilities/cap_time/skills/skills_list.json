@@ -1,0 +1,12 @@
+{
+  "skills": [
+    {
+      "id": "cap_time",
+      "file": "cap_time.md",
+      "summary": "Return current local device time with SNTP sync only when the clock is invalid.",
+      "cap_groups": [
+        "cap_time"
+      ]
+    }
+  ]
+}

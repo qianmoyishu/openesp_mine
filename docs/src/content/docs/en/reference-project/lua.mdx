@@ -1,0 +1,19 @@
+---
+title: Lua scripts
+description: Managed Lua root for cap_lua, tool surface, and execution model.
+---
+
+import { LinkCard } from '@astrojs/starlight/components';
+
+`cap_lua` manages a **sandboxed Lua root** (demo: `/fatfs/scripts/`), exposing tools to list, edit, and run scripts synchronously or asynchronously. Paths are validated—only `.lua` files under the root run.
+
+Which native hooks scripts can call (GPIO, delays, publishing events to the router, …) depends on registered `lua_module_*` modules. `claw_event_router`’s `run_script` action can also launch Lua without the LLM.
+
+`edge_agent` comes with several example scripts under `application/edge_agent/main/lua_scripts/`:
+- `advance_camera_preview.lua`: demonstrates combined usage of `camera`, `display`, `board_manager`, and `delay`.
+- `advance_clock_dial_demo.lua` / `advance_flappybird.lua`: comprehensive demos of display rendering and script interaction.
+- `advance_audio_fft.lua`: demonstrates audio capture and spectrum analysis.
+- `advance_lcd_touch_paint.lua`: demonstrates touch-screen drawing.
+
+<LinkCard href="@lang/reference-cap/cap-lua" title="cap_lua" description="Tool list, async execution, and automation run_script" />
+<LinkCard href="@lang/reference-cap/lua-modules" title="Lua extension modules" description="lua_module_* registration and native APIs inside scripts" />

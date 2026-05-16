@@ -1,0 +1,12 @@
+{
+  "skills": [
+    {
+      "id": "lua_module_esp_heap",
+      "file": "lua_module_esp_heap.md",
+      "summary": "How to query heap capability flags, memory usage, and task watermarks from Lua.",
+      "cap_groups": [
+        "cap_lua"
+      ]
+    }
+  ]
+}

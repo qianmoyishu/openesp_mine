@@ -1,0 +1,12 @@
+{
+  "skills": [
+    {
+      "id": "cap_router_mgr",
+      "file": "cap_router_mgr.md",
+      "summary": "Manage router automation rules: list/get/add/update/delete/reload with strict rule_json format.",
+      "cap_groups": [
+        "cap_router_mgr"
+      ]
+    }
+  ]
+}

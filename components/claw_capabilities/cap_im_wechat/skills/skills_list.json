@@ -1,0 +1,12 @@
+{
+  "skills": [
+    {
+      "id": "cap_im_wechat",
+      "file": "cap_im_wechat.md",
+      "summary": "How to send additional text and images to WeChat.",
+      "cap_groups": [
+        "cap_im_wechat"
+      ]
+    }
+  ]
+}

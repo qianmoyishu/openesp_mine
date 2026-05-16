@@ -1,0 +1,12 @@
+{
+  "skills": [
+    {
+      "id": "lua_module_lcd",
+      "file": "lua_module_lcd.md",
+      "summary": "How to initialize, inspect, reset, and delete SPI or QSPI LCD panels from Lua.",
+      "cap_groups": [
+        "cap_lua"
+      ]
+    }
+  ]
+}

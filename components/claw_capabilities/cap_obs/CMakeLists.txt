@@ -1,0 +1,11 @@
+idf_component_register(
+    SRCS
+        "src/cap_obs.c"
+    INCLUDE_DIRS
+        "include"
+    REQUIRES
+        claw_cap
+        esp_http_client
+        json
+        mbedtls
+)

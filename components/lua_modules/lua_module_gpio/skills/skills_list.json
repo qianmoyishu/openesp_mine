@@ -1,0 +1,12 @@
+{
+  "skills": [
+    {
+      "id": "lua_module_gpio",
+      "file": "lua_module_gpio.md",
+      "summary": "How to set GPIO direction, write level, and read level from Lua.",
+      "cap_groups": [
+        "cap_lua"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+## IDF Component Manager Manifest File
+dependencies:
+  espressif/esp_board_manager:
+    version: "^0.5.7"
+    public: true
+  espressif/esp_wifi_remote:
+    version: ">=0.10,<2.0"
+    rules:
+      - if: "target in [esp32p4]"
+  espressif/esp_hosted:
+    version: "2.12.3"
+    rules:
+      - if: "target in [esp32p4]"
+
+  espressif2022/esp_emote_expression:
+    version: "^1.0.0"
+
+  espressif2022/esp_emote_gfx:
+    version: "3.0.2"
+
+  app_claw:
+    path: ../../../components/common/app_claw
+
+  app_config:
+    path: ../components/app_config
+
+  cap_im_wechat:
+    path: ../../../components/claw_capabilities/cap_im_wechat
+    rules:
+      - if: $CONFIG{APP_CLAW_CAP_IM_WECHAT} == True
+
+  cap_at_mqtt:
+    path: ../../../components/claw_capabilities/cap_at_mqtt
+    rules:
+      - if: $CONFIG{APP_CLAW_CAP_AT_MQTT} == True
+
+  captive_dns:
+    path: ../../../components/common/captive_dns
+
+  emote:
+    path: ../../../components/common/emote
+    rules:
+      - if: $CONFIG{ESP_BOARD_DEV_DISPLAY_LCD_SUPPORT} == True
+
+  http_server:
+    path: ../components/http_server
+
+  settings:
+    path: ../../../components/common/settings
+
+  wifi_manager:
+    path: ../../../components/common/wifi_manager

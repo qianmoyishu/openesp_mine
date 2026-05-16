@@ -1,0 +1,27 @@
+menu "Lua Fuel Gauge Module"
+
+    choice LUA_MODULE_FUEL_GAUGE_CHIP
+        prompt "Fuel gauge chip model"
+        default LUA_MODULE_FUEL_GAUGE_CHIP_BQ27220
+        help
+            Select which fuel-gauge backend this Lua module should build against.
+
+        config LUA_MODULE_FUEL_GAUGE_CHIP_BQ27220
+            bool "BQ27220"
+            help
+                Build the Fuel Gauge Lua module with the TI BQ27220 backend.
+
+        config LUA_MODULE_FUEL_GAUGE_CHIP_MAX17048
+            bool "MAX17048"
+            help
+                Reserved for a future MAX17048 backend. The code path is not
+                implemented yet and will raise an error at runtime if selected.
+
+        config LUA_MODULE_FUEL_GAUGE_CHIP_STC3115
+            bool "STC3115"
+            help
+                Reserved for a future STC3115 backend. The code path is not
+                implemented yet and will raise an error at runtime if selected.
+    endchoice
+
+endmenu

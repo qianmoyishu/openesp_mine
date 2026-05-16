@@ -1,0 +1,60 @@
+---
+title: Skills Manager
+description: skills_list.json, Skills Markdown, per-session activation, and context injection.
+---
+
+import LinkToSource from '@/components/LinkToSource.astro';
+import { Aside, LinkCard, FileTree } from '@astrojs/starlight/components';
+
+Header: <LinkToSource relativePath="components/claw_modules/claw_skill/include/claw_skill.h" />
+
+`claw_skill` manages user-visible **Skills** in the model context:
+
+- On disk: a set of Skill files (several `.md`) plus a manifest (`skills_list.json`) describing ids, summaries, and which file backs each Skill.
+- Per session: a set of “currently activated” Skill ids persisted under the session state directory.
+- After activation, the model sees fuller Skill docs and can use `cap_skill` tools to activate/deactivate Skills.
+
+<LinkCard title="How Skills work" href="@lang/reference-project/skills" description="Skill mechanics and manual or Agent-driven edits to Skills" />
+
+## Init configuration
+
+Main fields of `claw_skill_config_t`:
+
+- `skills_root_dir`: root for Skill files and `skills_list.json` (demo: `/fatfs/skills`).
+- `session_state_root_dir`: where per-session activation state files live (demo shares the same root as session history).
+- `max_file_bytes`: maximum bytes read from a single Skill document file (guards against huge files filling the context).
+
+## Wiring into claw_core
+
+`claw_skill` plugs into `claw_core` as two **context providers**:
+
+1. **`claw_skill_skills_list_provider`**: each request renders all Skills from `skills_list.json` (id, summary) into the system prompt so the model knows what Skills exist.
+2. **`claw_skill_active_skill_docs_provider`**: concatenates `.md` contents for Skills activated in the current session.
+
+Activating a Skill therefore adds its `.md` to the next request; tool descriptions and behavioral contracts come from that document.
+
+## Activation state
+
+Activation is **isolated per session**:
+
+- Session A activating `weather` does not affect session B.
+- State is persisted as files under `session_state_root_dir` and survives reboot.
+- The model can toggle via `cap_skill`’s `activate_skill` / `deactivate_skill`, or you can use the Console `skill` commands.
+
+<Aside type="caution">
+  Console `--session` must match the id from the current `session` command, otherwise it looks like “activated but not in context”.
+</Aside>
+
+## Where runtime Skills come from
+
+The `/fatfs/skills/skills_list.json` read at runtime is merged from:
+
+1. **`application/edge_agent/main/skills/`**: app-bundled Skill files, synced into `fatfs_image/skills/` by `tools/cmake/skills_sync.cmake` during build before being packaged into firmware.
+2. **Component Skills**: each `cap_*` / `lua_module_*` component may ship a `skills/` subtree; `tools/sync_component_skills.py` merges them into `fatfs_image/skills/` at build time before packaging.
+
+Note: files placed under `application/edge_agent/main/skills/` go through the build sync flow; directly editing same-named files under `fatfs_image/skills/` will be overwritten by the next build.
+
+## User-facing interaction
+
+<LinkCard title="Console usage" href="@lang/reference-project/console-usage" description="Using the skill command in the Console" />
+<LinkCard title="cap_skill" href="@lang/reference-cap/cap-skill" description="activate_skill / deactivate_skill vs model-visible Skills" />

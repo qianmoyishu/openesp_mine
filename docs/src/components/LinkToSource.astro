@@ -1,0 +1,94 @@
+---
+import FileCodeCorner from "@lucide/astro/icons/file-code-corner";
+
+interface Props {
+  /** Source file path relative to repository root */
+  relativePath?: string;
+  /** Alias for relativePath */
+  path?: string;
+  /** Git ref (branch/tag/commit hash) */
+  refs?: string;
+  /** Optional source line number */
+  line?: number;
+}
+
+const props = Astro.props as Props;
+const rawPath = props.relativePath ?? props.path ?? "";
+const normalizedPath = rawPath.replace(/^\/+/, "").replace(/^\.\/+/, "");
+
+const repoBase =
+  import.meta.env.PUBLIC_DOC_SOURCECODE_REPO ?? "https://github.com/espressif/esp-claw";
+const defaultRefs = import.meta.env.PUBLIC_DOC_SOURCECODE_REFS ?? "master";
+const refs = props.refs ?? defaultRefs;
+
+const safeRepoBase = repoBase.replace(/\/+$/, "");
+const encodedPath = normalizedPath
+  .split("/")
+  .filter(Boolean)
+  .map((segment) => encodeURIComponent(segment))
+  .join("/");
+const lineFragment = props.line ? `#L${props.line}` : "";
+const href = `${safeRepoBase}/blob/${encodeURIComponent(refs)}/${encodedPath}${lineFragment}`;
+
+const fileName = normalizedPath.split("/").filter(Boolean).pop() ?? normalizedPath;
+const lineSuffix = props.line ? `:${props.line}` : "";
+const label = `${fileName}${lineSuffix}`;
+---
+
+{
+  normalizedPath ? (
+    <a
+      class="source-link"
+      href={href}
+      target="_blank"
+      rel="noreferrer noopener"
+      title={normalizedPath}
+      aria-label={`View source: ${normalizedPath}${lineSuffix}`}
+    >
+      <FileCodeCorner class="source-link-icon" aria-hidden="true" />
+      <span>{label}</span>
+    </a>
+  ) : null
+}
+
+<style>
+  .source-link {
+    --source-link-border-color: var(--sl-color-gray-4);
+
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+    border: 1px dotted var(--source-link-border-color);
+    border-radius: var(--radius-sm, 6px);
+    padding: 0.1rem 0.2rem;
+    transform: translateY(0.1rem);
+    transition:
+      color 0.15s ease,
+      border-color 0.15s ease,
+      background-color 0.15s ease;
+  }
+
+  :root[data-theme='dark'] .source-link {
+    --source-link-border-color: var(--sl-color-gray-3);
+  }
+
+  .source-link:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    background-color: rgba(0, 0, 0, 0.041);
+  }
+
+  :root[data-theme='dark'] .source-link:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    background-color: rgba(255, 255, 255, 0.084);
+  }
+
+  .source-link-icon {
+    width: 0.9rem;
+    height: 0.9rem;
+    flex-shrink: 0;
+  }
+</style>

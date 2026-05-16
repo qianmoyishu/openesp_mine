@@ -1,0 +1,12 @@
+{
+  "skills": [
+    {
+      "id": "cap_im_feishu",
+      "file": "cap_im_feishu.md",
+      "summary": "How to send additional text, images, and files to Feishu.",
+      "cap_groups": [
+        "cap_im_feishu"
+      ]
+    }
+  ]
+}

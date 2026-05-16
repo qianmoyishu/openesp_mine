@@ -1,0 +1,124 @@
+---
+title: Web 配置
+description: 通过局域网浏览器修改 Wi-Fi、LLM、IM 与文件，无需重新编译。
+---
+
+import { Aside, Steps, LinkCard } from '@astrojs/starlight/components';
+
+`edge_agent` 在 Wi-Fi 栈就绪后会启动一个轻量 HTTP 服务，托管配置页静态资源，并提供 JSON API。实现位于 `application/edge_agent/components/http_server/`。
+
+## 打开配置页
+
+电脑或手机需与开发板在 **同一局域网**，或连接至**开发板提供的 SoftAP 热点**（`edge_agent` 中默认的 SSID 为 `esp-claw-xxxx`，`xxxx` 为设备 MAC 地址）。
+
+在浏览器访问：
+[http://esp-claw.local/](http://esp-claw.local/)
+或
+`http://<设备IP>/`
+
+
+<Aside type="note">
+  - 若打不开 `.local` 域名，请改用串口日志里打印的 IP，或路由器后台查看 DHCP 分配。
+  - 默认端口 **80**；若修改默认端口或 mDNS 域名，需访问修改后端口/域名。
+</Aside>
+
+页面加载后会自动加载当前配置。页面支持多语言切换，以及显示 Wi-Fi 连接状态、设备 IP 等信息。
+
+## 页面布局
+
+配置页分为三个 Tab：
+
+- **Configuration**：系统配置（Wi-Fi、LLM、IM、搜索、时区等）
+- **Memory**：记忆文件管理（长期记忆与画像记忆）
+- **File Manager**：文件系统管理
+
+### 系统配置
+
+#### LLM 供应商选择
+
+配置页提供 **LLM Provider** 下拉菜单，选择后会自动填写对应的 `Profile`、`Base URL`、`Backend Type` 和 `Auth Type`：
+
+| Provider | Profile | Base URL |
+|----------|---------|----------|
+| OpenAI | `openai` | `https://api.openai.com/v1` |
+| Qwen Compatible | `qwen_compatible` | `https://dashscope.aliyuncs.com/compatible-mode/v1` |
+| Gemini | `gemini` | `https://generativelanguage.googleapis.com/v1beta/openai/` |
+| Anthropic | `anthropic` | `https://api.anthropic.com/v1` |
+| Custom | 自定义 | 自定义 |
+
+选择供应商后，只需填写 `API Key` 和 `Model` 即可。其余 LLM 配置项与 [配置说明](@lang/reference-project/configuration) 中的表一致。
+
+#### 启用微信 ClawBot 接口
+
+目前，微信以插件的形式提供 ClawBot 功能，需先按照下述步骤在微信中启用，并在 Web 配置页面登录：
+
+<Steps>
+1. **启用微信 ClawBot 插件**
+
+    微信「我」→「设置」→「插件」→「ClawBot」，启用此插件。
+    <Aside type="tip">
+      若找不到 ClawBot 插件，请尝试更新微信到最新版本。
+    </Aside>
+
+2. **在 Web 配置页面登录**
+
+    打开 Web 配置页面，可通过以下两种方式登录：
+    - **扫码登录**：点击「Generate QR」生成二维码，使用微信「我」→「设置」→「插件」→「ClawBot」→「微信扫一扫」扫描二维码。
+    - **链接登录**：点击「Generate QR」生成二维码后，点击「Open login link」在新窗口打开登录链接，按提示完成登录。
+
+3. **登录成功**
+
+    登录成功后，Web 配置页面将有相应提示。
+
+4. **保存配置**
+
+    点击「Save Changes」按钮保存全部配置。
+</Steps>
+
+<Aside type="note">
+  虽然 Web 配置界面可以修改 WeChat Base URL & WeChat CDN Base URL，但现阶段微信仅可使用默认的 Base URL，请勿修改。
+</Aside>
+
+#### 其他配置
+
+网络配置、搜索配置、时区配置等，与 [配置说明](@lang/reference-project/configuration) 中的表一致。
+
+### 记忆管理
+
+记忆管理页面用于查看记忆系统中的长期记忆、管理「灵魂」、「身份」与「用户信息」。
+
+- **长期记忆**是系统根据结构化记忆生成的人类可读文件。修改该文件无法直接改变结构化记忆，因此仅提供只读查看功能。
+- **灵魂**、**身份**与**用户信息**是可编辑的文件，用于记录设备与用户的个性化信息。
+
+在与 ESP-Claw 对话后，你可以点击「Refresh」按钮或「Refresh All」按钮，刷新记忆文件，查看最新的记忆内容。
+
+<LinkCard href="@lang/reference-project/memory" title="Memory 参考文档" description="了解长期记忆、「灵魂」、「身份」与「用户信息」的详细信息" />
+
+### 文件管理
+
+Web 配置页面提供了简单的文件管理功能，可以在不通过 LLM 的情况下直接查阅和读写文件系统中的文件。
+ESP-Claw 运行时的文件系统结构见 [文件系统布局](@lang/reference-project/boot-and-runtime#文件系统)。
+
+默认情况下，文件管理为只读模式，仅当启用「管理员模式」（Dev Mode）后，才能进行写操作。
+启用「管理员模式」后，可用于手动添加 Skill、修改自动化规则、修改 Lua 脚本等。
+
+<Aside type="danger" title="注意">
+  启用「管理员模式」后，请谨慎操作。误删重要文件、JSON 不合法等操作可能导致系统无法正常运行，甚至无限重启。
+</Aside>
+
+<Aside type="note">
+  - 在线文件读写有大小限制，具体取决于编译固件时的 `CONFIG_HTTP_MAX_UPLOAD_SIZE` 常量。
+  - 修改自动化规则后，记得在 Console 执行 `auto reload`（见 [Console 交互](@lang/reference-project/console-usage)）。
+</Aside>
+
+## 安全提示
+
+**`edge_agent` 不是为生产环境准备的。`edge_agent` 的 HTTP Server 假定你在可信的环境中运行，并且会返回几乎所有信息以便「极客」们调试。**
+
+<Aside type="caution" title="安全提示">
+  - **不要把 Web 配置页端口暴露到公网。**
+  - **请注意 SoftAP 也可获取到完整的配置信息，含机密令牌。**
+  - 服务跑在局域网，默认无 HTTPS。
+  - 配置页与 NVS 中存有机密令牌，请勿把导出的配置或整机 NVS 转储随意公开。
+  - 配置页可以下载文件系统中几乎所有内容。
+</Aside>

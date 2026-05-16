@@ -1,0 +1,36 @@
+{
+  "skills": [
+    {
+      "id": "cap_lua_list",
+      "file": "cap_lua_list.md",
+      "summary": "Discover Lua scripts across builtin/temp/user, prefer reusing existing scripts, and map listed relative paths to read_file paths.",
+      "cap_groups": [
+        "cap_lua"
+      ]
+    },
+    {
+      "id": "cap_lua_edit",
+      "file": "cap_lua_edit.md",
+      "summary": "Create and update Lua scripts through cap_lua, preferring existing scripts first and using builtin as references with temp/user for iteration.",
+      "cap_groups": [
+        "cap_lua"
+      ]
+    },
+    {
+      "id": "cap_lua_run",
+      "file": "cap_lua_run.md",
+      "summary": "Run Lua scripts from builtin/temp/user sync or async, preferring existing scripts before creating new ones, and manage background Lua jobs.",
+      "cap_groups": [
+        "cap_lua"
+      ]
+    },
+    {
+      "id": "cap_lua_patterns",
+      "file": "cap_lua_patterns.md",
+      "summary": "Reusable Lua patterns for scripts that run through cap_lua.",
+      "cap_groups": [
+        "cap_lua"
+      ]
+    }
+  ]
+}

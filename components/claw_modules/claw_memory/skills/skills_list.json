@@ -1,0 +1,20 @@
+{
+  "skills": [
+    {
+      "id": "memory_ops",
+      "file": "memory_ops.md",
+      "summary": "Use on-device long-term memory tools to remember, recall, list, update, and forget structured memories.",
+      "cap_groups": [
+        "claw_memory"
+      ]
+    },
+    {
+      "id": "profile_memory_ops",
+      "file": "profile_memory_ops.md",
+      "summary": "Use the editable profile markdown files to persist changes to the agent's soul, identity card, persona, role, and the user's standing profile.",
+      "cap_groups": [
+        "cap_files"
+      ]
+    }
+  ]
+}

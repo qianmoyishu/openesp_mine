@@ -1,0 +1,12 @@
+{
+  "skills": [
+    {
+      "id": "lua_module_ssd1306",
+      "file": "lua_module_ssd1306.md",
+      "summary": "How to drive an I2C SSD1306 OLED from Lua using the i2c module.",
+      "cap_groups": [
+        "cap_lua"
+      ]
+    }
+  ]
+}

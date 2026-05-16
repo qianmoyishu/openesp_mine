@@ -1,0 +1,12 @@
+{
+  "skills": [
+    {
+      "id": "cap_xfyun_speech",
+      "file": "cap_xfyun_speech.md",
+      "summary": "Use XFYun ASR and TTS, preferring WAV output for file delivery and raw PCM only when requested.",
+      "cap_groups": [
+        "cap_xfyun_speech"
+      ]
+    }
+  ]
+}

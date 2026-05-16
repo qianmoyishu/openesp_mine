@@ -1,0 +1,112 @@
+---
+title: Project architecture
+description: Repo layering, runtime dataflow, and documentation navigation for ESP-Claw.
+---
+
+import { FileTree, Aside } from '@astrojs/starlight/components';
+import ClawRunDiagram from "@/assets/images/claw_run.svg?url";
+
+## System overview
+
+The repo follows an **“example app + shared components”** layout: `application/edge_agent` is a buildable ESP-IDF sample that wires Wi-Fi, the config UI, Lua modules, and capabilities into a full device; `components` holds reusable runtime core, capability plugins, and hardware/script extensions for other boards and scenarios.
+
+Today the code falls into four areas:
+
+- **App assembly:** `application/edge_agent/main` and `components/common` — boot, networking, settings, the HTTP provisioning UI, and app-level module registration.
+- **Capabilities:** `components/claw_capabilities` — outward-facing capabilities such as IM, MCP client/server, Lua runtime, scheduling, files, time, web search, and more.
+- **Runtime core:** `components/claw_modules` — Agent infrastructure: core context, capability registration, event routing, memory, and skills.
+- **Device & script extensions:** `components/lua_modules` — exposes displays, cameras, audio, buttons, GPIO, PWM, storage, and other peripherals to Lua and the Agent.
+
+## Project directory layout
+
+<FileTree>
+- application/edge_agent/ **Demo app** — wires the framework and caps into flashable firmware
+  - main/ Boot entry (`app_main`) and Lua script examples
+    - main.c Firmware entry
+  - components/ App-level components
+    - app_config/ Configuration persistence (NVS read/write)
+    - http_server/ Web management UI and JSON API
+  - fatfs_image/ Factory FATFS: router_rules, memory, scheduler samples
+- components/common/ **Shared app components** — reusable wiring across apps
+  - app_claw/ App startup and wiring (`app_claw_start`, CLI, Lua module registration)
+  - wifi_manager/ Wi-Fi and network setup
+  - settings/ Base library for local settings persistence
+  - captive_dns/ Captive DNS for SoftAP provisioning
+  - display_arbiter/ Display ownership arbitration [\[details\]](@lang/reference-cap/lua-modules#display-module)
+  - emote/ Emote display and network-state linkage
+- components/
+  - claw_modules/ **Runtime core**
+    - claw_core/ Agent core — Agent loop, context assembly, tool calls
+    - claw_cap/ Capability runtime — capability abstraction, registration, and management
+    - claw_event_router/ Event Router & automation — deterministic event routing
+    - claw_memory/ Structured memory
+    - claw_skill/ Skills — skill metadata and loading
+  - claw_capabilities/ **Capability**
+    - cap_im_*/ IM (Feishu, QQ, Telegram, WeChat)
+    - cap_mcp_*/ MCP protocol (MCP client, MCP server)
+    - cap_lua/ Lua runtime management
+    - cap_skill_mgr/ Managed interface wrapper for `claw_skill`
+    - cap_scheduler/ Scheduler
+    - cap_router_mgr/ Managed interface wrapper for `claw_event_router`
+    - ... other utility capabilities
+  - lua_modules/ **Device & script extensions**
+    - lua_module_display/ Display
+    - lua_module_camera/ Camera
+    - lua_module_audio/ Audio
+    - lua_module_mcpwm/ PWM
+    - lua_module_button/ Button
+    - lua_module_gpio/ GPIO
+    - lua_module_i2c/ I2C bus
+    - lua_module_adc/ ADC sampling
+    - lua_module_led_strip/ LED strip
+    - lua_module_storage/ Storage
+    - lua_module_delay/ Delays
+    - lua_module_system/ System time, memory, and network status
+    - lua_module_event_publisher/ Event publishing
+    - lua_module_uart/ UART serial I/O
+    - esp_painter/ Lightweight drawing helpers
+- docs/ Project documentation and images
+</FileTree>
+
+## Runtime diagram
+
+<img src={ClawRunDiagram} alt="Runtime diagram" />
+
+---
+
+## Runtime data directory
+
+All runtime data lives under the FATFS mount `/fatfs`:
+
+<FileTree>
+- fatfs/
+  - sessions/ Session history (one file per session id)
+  - memory/
+    - MEMORY.md Human-readable memory view (read-only)
+    - memory_records.jsonl Structured memory records
+    - memory_index.json Summary-tag and keyword index
+    - memory_digest.log Memory-operation digest log
+    - user.md User profile
+    - soul.md Persona
+    - identity.md Identity
+  - skills/
+    - skills_list.json Skills manifest (id, file, summary, cap_groups)
+    - *.md Skill documents
+  - scripts/
+    - hello.lua Factory sample script
+    - audio_fft_2.lua Audio capture and spectrum-analysis sample
+    - mcpwm_servo.lua Servo PWM control sample
+    - *.lua Custom Lua scripts
+  - router_rules/
+    - router_rules.json Automation rules
+  - scheduler/
+    - schedules.json Scheduler jobs
+    - schedules.json.state Scheduler runtime state (generated)
+  - inbox/
+    - ... IM attachments
+</FileTree>
+
+## Backup and reset
+
+- **Backup**: copy the `/fatfs` subfolders (`sessions/`, `memory/`, `skills/`, `scripts/`, `router_rules/`, `scheduler/`) to external storage.
+- **Reset**: re-flash the `storage` partition or re-flash the full firmware.

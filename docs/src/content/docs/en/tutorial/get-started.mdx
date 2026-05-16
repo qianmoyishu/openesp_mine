@@ -1,0 +1,108 @@
+---
+title: Web Flash & Get Started
+description: Flash ESP-Claw firmware using the web flasher.
+---
+
+import { LinkCard, Steps, Aside, LinkButton } from '@astrojs/starlight/components';
+
+## Prerequisites
+
+At this point, you should already have assembled the ESP-Claw breadboard hardware, or prepared other ESP-Claw compatible hardware.
+You can view the list of ESP-Claw compatible development boards in the [GitHub repository](https://github.com/espressif/esp-claw/tree/master/application/edge_agent/boards).
+ESP-Claw requires at least 8 MB Flash and 8 MB PSRAM, currently supports ESP32-S3 and ESP32-P4.
+
+Before flashing, prepare a computer with Chrome or Edge installed. Web flashing is not available in Firefox for now.
+
+<Aside type="tip">
+    **Advanced**: [Build from source and flash](@lang/reference-project/build-from-source).
+</Aside>
+
+## Web flash
+
+<Steps>
+
+1. **Connect the board with a data cable**
+
+   Connect the board to your PC with a USB data cable. If you are using the breadboard form ESP-Claw, use the USB port labeled UART.
+
+2. **Open the web flasher and connect serial**
+
+   <LinkCard title="Web flash" href="@lang/flash" description="Open the web flasher to program ESP-Claw on ESP32" />
+
+   Open the web flasher, click Connect, and select your board.
+
+3. **Configure options**
+
+   - Pick the firmware image for your board.
+   - Configure Wi-Fi SSID and password (required).
+   - Configure LLM: Supports GPT (OpenAI), Qwen (Alibaba Bailian), Claude (Anthropic), and DeepSeek (DeepSeek API). Generate an API Key as prompted and enter it.
+      <Aside type="note" title="Please select a model with strong reasoning ability">
+         ESP-Claw's self-programming, complex tool combination, and other advanced features rely on the ability of strong reasoning models.
+         We recommend using GPT-5.4, Qwen3.6-plus, Claude4.6-sonnet, DeepSeek v4 Pro, or similar performance models to get the best experience.
+      </Aside>
+   - Configure chat apps to connect: currently supports Telegram, QQ Bot (OpenClaw), Feishu, and WeChat ClawBot. You can fill several at once.
+     | Chat app | Setting | Help |
+     | --- | --- | --- |
+     | Telegram | Bot token | [Telegram Bot docs](https://core.telegram.org/bots#6-create-a-token) |
+     | QQ Bot | ID and secret | [QQ Bot site](https://q.qq.com/qqbot/openclaw/) |
+     | Feishu | App ID and secret | [Feishu doc](https://www.feishu.cn/content/article/7602519239445974205) |
+     | WeChat ClawBot | Automatic configuration via WeChat QR scan | N/A |
+   - Configure search engine:
+      <Aside type="tip">
+         After a search engine is configured, ESP-Claw can retrieve up-to-date information from the web. Weather queries also depend on search engine support.
+
+         Tavily is recommended and provides a free quota.
+      </Aside>
+      Open [Tavily Dashboard](https://app.tavily.com/), sign up and sign in, copy an API Key, then paste it into the Tavily field in the web flasher.
+   - Configure advanced settings (optional). See [Configuration](@lang/reference-project/configuration).
+
+4. **Flash**
+
+   Click Flash and wait for programming to finish.
+
+5. **Start using it**
+
+   After flashing, the device restarts automatically and is ready to use.
+
+   <Aside type="note">
+      If the Wi-Fi SSID or password is incorrect, ESP-Claw may fail to connect. In this case, connect to the SoftAP provided by ESP-Claw and update the config there. [➡️Web config](@lang/tutorial/web-config)
+   </Aside>
+
+</Steps>
+
+## First interactions
+
+<Aside type="tip">
+   Boards with a display can show Wi-Fi status on screen. Headless boards can check Wi-Fi status through serial Console or the status display on the Web config page.
+</Aside>
+
+Telegram / QQ Bot / WeChat ClawBot are recommended for interacting with ESP-Claw.
+- Send a message on a configured IM channel and ESP-Claw replies automatically.
+- No reply? [➡️FAQ](@lang/tutorial/faq#messages-sent-via-im-get-no-response)
+- Prefer serial Console? [➡️Console usage](@lang/reference-project/console-usage)
+
+**Everyday Q&A**
+- Hi, what capabilities do you currently have?
+- Any AI news lately?
+- At 12% annual interest, what will 10,000 become after 3 years?
+
+**Hardware control** (requires supported hardware)
+- Turn the light on / set the light to red
+- Draw `Hello, ESP-Claw!` on the display
+- Take a photo and send it to me
+- Play a 1s 440Hz beep
+- Draw a smiley face on the display
+
+**Scheduled reminders**
+- Remind me to drink water every day at 7am
+- Remind me to sleep at 9pm every day
+- Remind me to clean every Saturday at 8am
+
+**Memory**
+- Remember that I prefer concise answers
+- Do you still remember my name?
+
+## Next steps
+
+<LinkButton href="@lang/reference-project/console-usage">Console usage</LinkButton>
+<LinkButton href="@lang/reference-project/configuration" variant="secondary">Configuration</LinkButton>
